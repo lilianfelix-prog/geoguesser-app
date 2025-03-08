@@ -1,93 +1,192 @@
-// src/client/index.ts
-// This will be bundled to public/client.js
+/**
+ * GeoGuesser Clone using Google Maps and Street View
+ */
 
-import  L  from 'leaflet';
-
-// Mock for street view data - in a real app, you'd use Mapillary or another provider
-const mapillaryImages: { [key: string]: string } = {
-    // New York
-    "40.712776,-74.005974": "https://drive.mapillary.com/thumbnail/u0ipI5PV6k8XlI5znVKVMw/thumb-2048.jpg",
-    // London
-    "51.507351,-0.127758": "https://drive.mapillary.com/thumbnail/wy-7DX7Ro5-VYzHgRnJU8g/thumb-2048.jpg",
-    // Tokyo
-    "35.689487,139.691711": "https://drive.mapillary.com/thumbnail/YPOjnbzLKFpdvLdQxOZ4uw/thumb-2048.jpg",
-    // Sydney
-    "-33.86882,151.20929": "https://drive.mapillary.com/thumbnail/j4FH_Si5ZX4nAiONWFjQ3A/thumb-2048.jpg",
-    // Paris
-  };
-  
-  interface Location {
+// Type definitions
+interface Location {
     lat: number;
     lng: number;
   }
-  // Game state
-  let map: L.Map;
-  let marker: L.Marker | null = null;
+  
+  // Declare Google Maps variables
+  let map: google.maps.Map;
+  let panorama: google.maps.StreetViewPanorama;
+  let marker: google.maps.Marker | null = null;
+  let actualMarker: google.maps.Marker | null = null;
+  let flightPath: google.maps.Polyline | null = null;
   let currentLocation: Location;
   let actualLocation: Location;
   let guessMode = true;
-  let totalScore = 0;
+  let gameScore = 0;
+  let currentRound = 0;
+  const maxRounds = 5;
   
-  // DOM elements
-  const streetviewElement = document.getElementById('streetview') as HTMLDivElement;
-  const guessButton = document.getElementById('guess-btn') as HTMLButtonElement;
-  const nextButton = document.getElementById('next-btn') as HTMLButtonElement;
-  const scoreElement = document.getElementById('score') as HTMLDivElement;
+  // Function to get location from URL parameters (for custom starting points)
+  function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const urllat = params.get('urllat');
+    const urllng = params.get('urllng');
+    
+    return { 
+      urllat: urllat ? parseFloat(urllat) : null, 
+      urllng: urllng ? parseFloat(urllng) : null
+    };
+  }
   
-  // Initialize map
-  function initMap() {
-    // Create map centered on Europe
-    map = L.map('map').setView([30, 0], 2);
+  // Initialize the map and Street View
+  function initialize() {
+    // Set up the game UI
+    setupGameUI();
     
-    // Add tile layer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    // Create the map
+    map = new google.maps.Map(
+      document.getElementById("map") as HTMLElement,
+      {
+        center: { lat: 0, lng: 0 },
+        zoom: 2,
+        streetViewControl: false,
+        fullscreenControl: false
+      }
+    );
     
-    // Add click handler for map
-    map.on('click', function(e) {
-      if (guessMode) {
-        if (marker) marker.remove();
-        marker = L.marker(e.latlng).addTo(map);
+    // Create the Street View panorama
+    panorama = new google.maps.StreetViewPanorama(
+      document.getElementById("street-view") as HTMLElement,
+      {
+        position: { lat: 0, lng: 0 },
+        pov: { heading: 0, pitch: 0 },
+        zoom: 1,
+        addressControl: false,
+        showRoadLabels: false
+      }
+    );
+    
+    // Add click event to the map for placing guesses
+    map.addListener("click", (event: google.maps.MapMouseEvent) => {
+      if (guessMode && event.latLng) {
+        placeGuessMarker(event.latLng);
       }
     });
     
-    // Load first location
-    loadNewLocation();
+    // Start the game
+    startNewRound();
   }
   
-  // Load a new random location
-  async function loadNewLocation() {
+  // Set up the game UI elements
+  function setupGameUI() {
+    // Add game controls to the page
+    const controlsDiv = document.createElement("div");
+    controlsDiv.className = "game-controls";
+    controlsDiv.innerHTML = `
+      <div class="game-info">
+        <div id="score">Score: 0</div>
+        <div id="round">Round: 1/${maxRounds}</div>
+      </div>
+      <button id="guess-btn" disabled>Make Guess</button>
+      <button id="next-btn" disabled>Next Round</button>
+    `;
+    document.getElementsByClassName("controls-container")[0].appendChild(controlsDiv);    
+    // Add event listeners
+    document.getElementById("guess-btn")?.addEventListener("click", makeGuess);
+    document.getElementById("next-btn")?.addEventListener("click", startNewRound);
+  }
+  
+  // Start a new round
+  async function startNewRound() {
+    // Clear previous markers and lines
+    clearMapElements();
+    
+    // Update game state
     guessMode = true;
-    if (marker) marker.remove();
+    currentRound++;
+    updateRoundDisplay();
+    
+    // Reset buttons
+    const guessBtn = document.getElementById("guess-btn") as HTMLButtonElement;
+    const nextBtn = document.getElementById("next-btn") as HTMLButtonElement;
+    guessBtn.disabled = true;
+    nextBtn.disabled = true;
     
     try {
-      // Fetch random location from API
-      const response = await fetch('/api/location/random');
-      const data = await response.json();
+      // Check for URL parameters first
+      const { urllat, urllng } = getUrlParams();
       
-      currentLocation = data.location;
-      actualLocation = data.actualLocation; // In a real app, this would be kept server-side
+      if (urllat !== null && urllng !== null) {
+        // Use URL parameters if available
+        actualLocation = { lat: urllat, lng: urllng };
+      } else {
+        // Otherwise fetch a random location from our server
+        const response = await fetch('/api/location/random');
+        const data = await response.json();
+        actualLocation = data.actualLocation;
+      }
       
-      // Display street view image
-      // In a real app, you'd use the Mapillary viewer SDK instead of this simplified approach
-      const locationKey = `${currentLocation.lat},${currentLocation.lng}`;
-      const imageUrl = mapillaryImages[locationKey] || 'placeholder.jpg';
-      
-        streetviewElement.innerHTML = `<img src="${imageUrl}" alt="Street View" />`;
-      
-      
-      // Reset UI
-      guessButton.disabled = false;
-      nextButton.disabled = true;
-      
-    } catch (error) {
-      console.error('Error loading location:', error);
-      streetviewElement.innerHTML = '<p>Error loading street view. Please try again.</p>';
+      // Create a StreetView service instance
+    const streetViewService = new google.maps.StreetViewService();
+    const radius = 5000; // Search radius in meters
+
+    // Convert lat/lng to Google Maps LatLng object
+    const latLng = new google.maps.LatLng(actualLocation.lat, actualLocation.lng);
+
+    // Search for a nearby Street View panorama
+    streetViewService.getPanorama({ location: latLng, radius: radius }, (data, status) => {
+        if (status === google.maps.StreetViewStatus.OK) {
+            if (data && data.location) {
+                panorama.setPano(data.location.pano); // Set the found panorama
+                panorama.setPov({
+                    heading: 0, // Adjust viewpoint
+                    pitch: 0,
+                });
+                panorama.setVisible(true);
+            } else {
+                console.warn("No Street View found near this location.");
+            }
+        } else {
+            console.warn("No Street View found near this location.");
+        }
+    });
+  }catch (error) {
+    console.error('Error fetching location:', error);
+    alert('Error fetching location. Please try again.');
+  }
+}
+  // Place a marker on the map for the user's guess
+  function placeGuessMarker(position: google.maps.LatLng) {
+    // Remove existing marker if any
+    if (marker) {
+      marker.setMap(null);
+    }
+    
+    // Create a new marker
+    marker = new google.maps.Marker({
+      position: position,
+      map: map
+    });
+    
+    // Enable the guess button
+    const guessBtn = document.getElementById("guess-btn") as HTMLButtonElement;
+    guessBtn.disabled = false;
+  }
+  
+  // Clear all markers and lines from the map
+  function clearMapElements() {
+    if (marker) {
+      marker.setMap(null);
+      marker = null;
+    }
+    
+    if (actualMarker) {
+      actualMarker.setMap(null);
+      actualMarker = null;
+    }
+    
+    if (flightPath) {
+      flightPath.setMap(null);
+      flightPath = null;
     }
   }
   
-  // Handle guess submission
+  // Make a guess and calculate score
   async function makeGuess() {
     if (!marker) {
       alert('Please select a location on the map first!');
@@ -95,15 +194,15 @@ const mapillaryImages: { [key: string]: string } = {
     }
     
     guessMode = false;
-    guessButton.disabled = true;
     
-    const guessLocation = {
-      lat: marker.getLatLng().lat,
-      lng: marker.getLatLng().lng
+    // Get guess coordinates
+    const guessLocation: Location = {
+      lat: marker.getPosition()!.lat(),
+      lng: marker.getPosition()!.lng()
     };
     
     try {
-      // Submit guess to API
+      // Calculate distance and score
       const response = await fetch('/api/guess', {
         method: 'POST',
         headers: {
@@ -117,38 +216,91 @@ const mapillaryImages: { [key: string]: string } = {
       
       const result = await response.json();
       
-      // Show actual location on map
-      L.marker([actualLocation.lat, actualLocation.lng], {
-        icon: L.icon({
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-icon.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/images/marker-shadow.png',
-          shadowSize: [41, 41]
-        })
-      }).addTo(map);
-      
-      // Draw line between guess and actual location
-      L.polyline([
-        [guessLocation.lat, guessLocation.lng],
-        [actualLocation.lat, actualLocation.lng]
-      ], {color: 'red'}).addTo(map);
-      
       // Update score
-      totalScore += result.score;
-      scoreElement.textContent = `Score: ${totalScore} (+${result.score}) - Distance: ${Math.round(result.distance)} km`;
+      gameScore += result.score;
+      updateScoreDisplay(result.score, result.distance);
       
-      // Enable next button
-      nextButton.disabled = false;
+      // Show actual location
+      showResult(guessLocation, result.actualLocation);
       
+      // Enable next button if not final round
+      const nextBtn = document.getElementById("next-btn") as HTMLButtonElement;
+      
+      if (currentRound < maxRounds) {
+        nextBtn.disabled = false;
+      } else {
+        // Game over
+        setTimeout(() => {
+          alert(`Game over! Final score: ${gameScore}. Play again?`);
+          // Reset game
+          gameScore = 0;
+          currentRound = 0;
+          startNewRound();
+        }, 2000);
+      }
     } catch (error) {
-      console.error('Error submitting guess:', error);
-      alert('Error submitting guess. Please try again.');
+      console.error('Error calculating score:', error);
+      alert('Error processing your guess. Please try again.');
     }
   }
   
-  // Event listeners
-  document.addEventListener('DOMContentLoaded', initMap);
-  guessButton.addEventListener('click', makeGuess);
-  nextButton.addEventListener('click', loadNewLocation);
+  // Show the result of the guess
+  function showResult(guessLocation: Location, actualLocation: Location) {
+    // Place a marker at the actual location
+    actualMarker = new google.maps.Marker({
+      position: { lat: actualLocation.lat, lng: actualLocation.lng },
+      map: map,
+      icon: {
+        url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+      }
+    });
+    
+    // Draw a line between the guess and actual location
+    flightPath = new google.maps.Polyline({
+      path: [
+        { lat: guessLocation.lat, lng: guessLocation.lng },
+        { lat: actualLocation.lat, lng: actualLocation.lng }
+      ],
+      geodesic: true,
+      strokeColor: '#FF0000',
+      strokeOpacity: 1.0,
+      strokeWeight: 2
+    });
+    
+    flightPath.setMap(map);
+    
+    // Fit the map to show both markers
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(new google.maps.LatLng(guessLocation.lat, guessLocation.lng));
+    bounds.extend(new google.maps.LatLng(actualLocation.lat, actualLocation.lng));
+    map.fitBounds(bounds);
+  }
+  
+  // Update the score display
+  function updateScoreDisplay(roundScore: number, distance: number) {
+    const scoreElement = document.getElementById("score");
+    if (scoreElement) {
+      scoreElement.textContent = `Score: ${gameScore} (+${roundScore}) - Distance: ${Math.round(distance)} km`;
+    }
+  }
+  
+  // Update the round display
+  function updateRoundDisplay() {
+    const roundElement = document.getElementById("round");
+    if (roundElement) {
+      roundElement.textContent = `Round: ${currentRound}/${maxRounds}`;
+    }
+  }
+  
+  // Define the window interface to expose the initialize function
+  declare global {
+    interface Window {
+      initialize: () => void;
+    }
+  }
+  
+  // Export the initialize function to the global scope
+  window.initialize = initialize;
+  
+  // For module system
+  export {};

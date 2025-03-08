@@ -1,7 +1,12 @@
 // src/server/index.ts
 import { Hono } from 'hono';
+import path from 'path';
 import { serveStatic } from 'hono/bun';
 import { cors } from 'hono/cors';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+
+const DB_PATH = path.resolve(__dirname, '../db/geoData.db');
 
 // Simple in-memory cache for locations
 const locationsCache = new Map();
@@ -17,24 +22,17 @@ app.get('/', serveStatic({ path: './public/index.html' }));
 app.route('/api', new Hono()
   // Get a random location
   .get('/location/random', async (c) => {
-    // For demo purposes, return a random location from a predefined list
-    // In production, you'd want to implement a more sophisticated selection
-    const locations = [
-      { lat: 40.712776, lng: -74.005974 }, // New York
-      { lat: 51.507351, lng: -0.127758 },  // London
-      { lat: 35.689487, lng: 139.691711 }, // Tokyo
-      { lat: -33.868820, lng: 151.209290 }, // Sydney
-      { lat: 48.856613, lng: 2.352222 }     // Paris
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * locations.length);
+
+    const locations = await getRanLocation();
+    console.log(locations);
+    const { latitude: lat, longitude: lng } = locations;
+
     return c.json({ 
       success: true, 
-      location: locations[randomIndex],
-      // Don't send this to the client in a real app!
-      // This is just for demonstration purposes
-      actualLocation: locations[randomIndex] 
+      location: { lat, lng },
+      actualLocation: { lat, lng }  
     });
+    
   })
   
   // Submit a guess
@@ -55,9 +53,10 @@ app.route('/api', new Hono()
     const maxDistance = 20000; // in km
     const score = Math.max(0, Math.round(maxScore * (1 - distance / maxDistance)));
     
-    return c.json({ success: true, distance, score });
+    return c.json({ success: true, distance, score, actualLocation });
   })
 );
+
 
 
 // Helper function to calculate distance between two points
@@ -96,3 +95,39 @@ export default {
   port,
   fetch: app.fetch
 };
+
+async function connectToDatabase() {
+  try {
+    const db = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database,
+      mode: sqlite3.OPEN_READONLY
+    });
+    
+    console.log('Successfully connected to the database');
+    return db;
+  } catch (error) {
+    console.error('Error connecting to the database:', error);
+    throw error;
+  }
+}
+
+
+async function getRanLocation() {
+  try {
+    const db = await connectToDatabase();
+    
+    
+    const users = await db.get('SELECT latitude, longitude FROM positions ORDER BY RANDOM() LIMIT 1',
+      [],
+      { timeout: 5000 } // 5-second timeout);
+    );
+    
+    await db.close();   
+    
+    return users;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+}

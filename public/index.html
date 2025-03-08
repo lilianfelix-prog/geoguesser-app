@@ -1,87 +1,322 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
   <title>GeoGuesser Clone</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.css" />
   <style>
     body, html {
       margin: 0;
       padding: 0;
       height: 100%;
-      font-family: Arial, sans-serif;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      background-color: #0f1624;
+      color: #f0f0f0;
     }
-    #app {
+        .container {
       display: flex;
       flex-direction: column;
       height: 100vh;
+      background: linear-gradient(to bottom, #1a2235, #0f1624);
     }
-    header {
-      background-color: #333;
-      color: white;
-      padding: 1rem;
+
+    .header {
+      background: linear-gradient(to bottom, #2a3245, #1a2235);
+      color: #ffffff;
       text-align: center;
+      
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
-    main {
+
+    .header h1 {
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      font-size: 1.5em;
+    }
+
+    .content {
       display: flex;
+      flex-direction: row;
       flex: 1;
-      flex-direction: column;
+      position: relative;
     }
-    #streetview {
-      height: 60%;
-      background-color: #ddd;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    #street-view {
+      width: 70%;
+      border-radius: 8px;
+      margin: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      background-color: #1a2235;
+      position: relative;
     }
-    #streetview img {
-      max-width: 100%;
-      max-height: 100%;
-    }
+
     #map {
-      height: 40%;
+      width: 30%;
+      height: 50%;
+      border-radius: 8px;
+      margin: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background-color: #1a2235;
+      position: relative;
     }
-    .controls {
-      padding: 1rem;
-      background-color: #f5f5f5;
+
+    /* Add a topographic overlay to the map similar to the image */
+    #map::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(26, 34, 53, 0) 0%, rgba(15, 22, 36, 0.8) 100%),
+        repeating-linear-gradient(rgba(255, 255, 255, 0.03) 0px, rgba(255, 255, 255, 0.03) 1px, transparent 1px, transparent 20px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0px, rgba(255, 255, 255, 0.03) 1px, transparent 1px, transparent 20px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .controls-container {
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1000;
+    }
+
+    .controls-trigger {
+      width: 40px;
+      height: 40px;
+      background-color: rgba(26, 34, 53, 0.8);
+      border-radius: 50%;
       display: flex;
-      justify-content: space-between;
+      margin-top: 20cap;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
     }
+
+    .controls-trigger:hover {
+      background-color: rgba(59, 130, 246, 0.8);
+    }
+
+    .controls-trigger svg {
+      width: 20px;
+      height: 20px;
+      color: #ffffff;
+    }
+
+    .game-controls {
+      position: absolute;
+      right: 50px;
+      top: 50%;
+      margin-top: 10cap;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      background: rgba(26, 34, 53, 0.8);
+      padding: 15px;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .controls-container:hover .game-controls {
+      opacity: 1;
+      visibility: visible;
+      right: 60px;
+    }
+
+    .game-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+      margin-bottom: 15px;
+    }
+
+    .game-controls button {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    .game-controls button:last-child {
+      margin-bottom: 0;
+    }
+
+    /* SVG Globe Styles */
+    .globe-svg {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 150px;
+      height: 150px;
+      margin-right: 9cap;
+      margin-bottom: 1cap;
+    }
+
+    .point-svg {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      stroke: #ffffff;
+    }
+
+    svg path{
+      stroke: cornflowerblue;
+    }
+
+    .game-info {
+      display: flex;
+      gap: 20px;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+    }
+
     button {
-      padding: 0.5rem 1rem;
-      background-color: #4CAF50;
-      color: white;
+      padding: 5px 10px;
+      background: linear-gradient(to bottom, #3b82f6, #2563eb);
+      color: #ffffff;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
-    }
-    #score {
-      font-size: 1.2rem;
+      border-radius: 30px;
       font-weight: bold;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    button:hover {
+      background: linear-gradient(to bottom, #4f8df9, #3b82f6);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      background: linear-gradient(to bottom, #2563eb, #1d4ed8);
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      background: linear-gradient(to bottom, #64748b, #475569);
+      border-color: #475569;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: not-allowed;
+      box-shadow: none;
+      text-shadow: none;
+      transform: none;
+    }
+
+    /* Add location info overlay similar to the image */
+    .location-info {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: rgba(15, 22, 36, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 300px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      z-index: 2;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .location-info h2 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .location-info p {
+      margin: 8px 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .location-tag {
+      display: inline-block;
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    /* Add responsive styles */
+    @media (max-width: 768px) {
+      .content {
+        flex-direction: column;
+      }
+      
+      #street-view {
+        width: auto;
+        height: 60%;
+      }
+      
+      #map {
+        width: auto;
+        height: 40%;
+      }
+      
+      .game-controls {
+        padding: 10px;
+      }
+      
+      button {
+        padding: 8px 15px;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>GeoGuesser Clone</h1>
-    </header>
-    <main>
-      <div id="streetview">
-        <p>Loading street view...</p>
-      </div>
+  <div class="container">
+    <div class="header">
+      <h1>GeoGuesser</h1>
+    </div>
+    <div class="content">
+      <div id="street-view"></div>
       <div id="map"></div>
-    </main>
-    <div class="controls">
-      <button id="guess-btn">Make Guess</button>
-      <div id="score">Score: 0</div>
-      <button id="next-btn" disabled>Next Round</button>
+    </div>
+    <!-- Game controls will be added by JavaScript -->
+    <div class="controls-container">
+      <div class="controls-trigger">
+          <object type="image/svg+xml" data="point.svg" class="point-svg"></object>
+      </div>
+      <div class="game-controls">
+        
+      </div>
     </div>
   </div>
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.js"></script>
-  <script type="module" src="/client.js"></script>
+  <!-- Load Google Maps JavaScript API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initialize"></script>
+  <script src="/public/index.js"></script>
+  <object type="image/svg+xml" data="globe.svg" class="globe-svg"></object>
 </body>
 </html>
