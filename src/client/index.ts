@@ -2,6 +2,8 @@
  * GeoGuesser Clone using Google Maps and Street View
  */
 
+import { latLng } from "leaflet";
+
 // Type definitions
 interface Location {
     lat: number;
@@ -221,7 +223,7 @@ interface Location {
       updateScoreDisplay(result.score, result.distance);
       
       // Show actual location
-      showResult(guessLocation, result.actualLocation);
+      showResult(guessLocation, actualLocation);
       
       // Enable next button if not final round
       const nextBtn = document.getElementById("next-btn") as HTMLButtonElement;
@@ -247,8 +249,12 @@ interface Location {
   // Show the result of the guess
   function showResult(guessLocation: Location, actualLocation: Location) {
     // Place a marker at the actual location
+    const actualLatLng = new google.maps.LatLng(
+      Number(actualLocation.lat), 
+      Number(actualLocation.lng)
+    );
     actualMarker = new google.maps.Marker({
-      position: { lat: actualLocation.lat, lng: actualLocation.lng },
+      position: actualLatLng,
       map: map,
       icon: {
         url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
@@ -259,7 +265,7 @@ interface Location {
     flightPath = new google.maps.Polyline({
       path: [
         { lat: guessLocation.lat, lng: guessLocation.lng },
-        { lat: actualLocation.lat, lng: actualLocation.lng }
+        { lat: actualLatLng.lat(), lng: actualLatLng.lng() }
       ],
       geodesic: true,
       strokeColor: '#FF0000',
