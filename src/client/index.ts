@@ -116,12 +116,7 @@ interface Location {
       if (urllat !== null && urllng !== null) {
         // Use URL parameters if available
         actualLocation = { lat: urllat, lng: urllng };
-      } else {
-        // Otherwise fetch a random location from our server
-        const response = await fetch('/api/location/random');
-        const data = await response.json();
-        actualLocation = data.actualLocation;
-      }
+       
       
       // Create a StreetView service instance
     const streetViewService = new google.maps.StreetViewService();
@@ -131,22 +126,77 @@ interface Location {
     const latLng = new google.maps.LatLng(actualLocation.lat, actualLocation.lng);
 
     // Search for a nearby Street View panorama
-    streetViewService.getPanorama({ location: latLng, radius: radius }, (data, status) => {
-        if (status === google.maps.StreetViewStatus.OK) {
-            if (data && data.location) {
+    streetViewService.getPanorama({ location: latLng, radius: radius }, async (data, status) => {
+          if (status === google.maps.StreetViewStatus.OK && data && data.location) {
                 panorama.setPano(data.location.pano); // Set the found panorama
                 panorama.setPov({
                     heading: 0, // Adjust viewpoint
                     pitch: 0,
                 });
                 panorama.setVisible(true);
-            } else {
-                console.warn("No Street View found near this location.");
-            }
-        } else {
-            console.warn("No Street View found near this location.");
-        }
+          } else {
+            console.warn("No Street View found for URL parameters location.");
+          }   
     });
+    }else{
+      await findValidStreetView();
+    }
+  }catch (error) {
+    console.error('Error fetching location:', error);
+    alert('Error fetching location. Please try again.');
+  }
+
+}
+
+async function findValidStreetView(): Promise<boolean>{
+  // Start with a random location
+  try {
+    const result = await fetchRandomLocation();
+    if (!result) {
+      throw new Error('Failed to fetch a valid location.');
+    }
+    
+    actualLocation = result;
+    const latLng = new google.maps.LatLng(actualLocation.lat, actualLocation.lng);
+    
+    // Create a Promise that wraps the callback-based API
+    return new Promise<boolean>((resolve, reject) => {
+      const streetViewService = new google.maps.StreetViewService();
+      streetViewService.getPanorama({ location: latLng, radius: 5000 }, (data, status) => {
+        if (status === google.maps.StreetViewStatus.OK && data && data.location) {
+          // Success! Set the panorama and resolve
+          panorama.setPano(data.location.pano);
+          panorama.setPov({
+            heading: 0,
+            pitch: 0,
+          });
+          panorama.setVisible(true);
+          resolve(true);
+        } else {
+          // No Street View found, try again with a new location
+          console.warn("No Street View found, trying another location...");
+          resolve(false); // Resolve with false to trigger retry
+        }
+      });
+    }).then((success: Boolean) => {
+      if (!success) {
+        // If not successful, recursively try again
+        return findValidStreetView();
+      }
+      return true;
+    });
+  } catch (error) {
+    console.error("Error in street view search:", error);
+    throw error;
+  }
+}
+
+async function fetchRandomLocation() {
+  try{
+  const response = await fetch('/api/location/random');
+  const data = await response.json();
+  actualLocation = data.actualLocation;
+  return actualLocation;
   }catch (error) {
     console.error('Error fetching location:', error);
     alert('Error fetching location. Please try again.');
