@@ -2,8 +2,6 @@
  * GeoGuesser Clone using Google Maps and Street View
  */
 
-import { latLng } from "leaflet";
-
 // Type definitions
 interface Location {
     lat: number;
@@ -139,7 +137,7 @@ interface Location {
           }   
     });
     }else{
-      await findValidStreetView();
+      await findValidStreetView();  
     }
   }catch (error) {
     console.error('Error fetching location:', error);
@@ -172,22 +170,33 @@ async function findValidStreetView(): Promise<boolean>{
           });
           panorama.setVisible(true);
           resolve(true);
+        } else if (status === google.maps.StreetViewStatus.ZERO_RESULTS) {
+          // Handle rate limiting
+          console.warn("Rate limit exceeded, waiting before retry...");
+          setTimeout(() => {
+            resolve(false);
+          }, 2000); // Wait 2 seconds before retrying
         } else {
           // No Street View found, try again with a new location
           console.warn("No Street View found, trying another location...");
-          resolve(false); // Resolve with false to trigger retry
+          setTimeout(() => {
+            resolve(false);
+          }, 1000); // Wait 1 second before retrying
         }
       });
-    }).then((success: Boolean) => {
+    }).then(async (success: Boolean) => {
       if (!success) {
-        // If not successful, recursively try again
+        // If not successful, wait a bit before trying again
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return findValidStreetView();
       }
       return true;
     });
   } catch (error) {
     console.error("Error in street view search:", error);
-    throw error;
+    // Wait before retrying on error
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return findValidStreetView();
   }
 }
 

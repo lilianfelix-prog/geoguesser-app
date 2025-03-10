@@ -114,20 +114,23 @@ async function connectToDatabase() {
 
 
 async function getRanLocation() {
+  let db;
   try {
-    const db = await connectToDatabase();
+    db = await connectToDatabase();
     
-    
-    const users = await db.get('SELECT latitude, longitude FROM positions ORDER BY RANDOM() LIMIT 1',
+    // Use more efficient random selection method
+    const location = await db.get(
+      'SELECT latitude, longitude FROM positions WHERE rowid = (ABS(RANDOM()) % (SELECT max(rowid) FROM positions) + 1)',
       [],
-      { timeout: 5000 } // 5-second timeout);
+      { timeout: 2000 } // Reduced timeout since query is more efficient
     );
     
-    await db.close();   
-    
-    return users;
+    return location;
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('Error fetching random location:', error);
     throw error;
+  } finally {
+    // Ensure db is always closed, even if error occurs
+    if (db) await db.close();
   }
 }
