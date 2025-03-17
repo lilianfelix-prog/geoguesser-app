@@ -34,6 +34,11 @@ app.route('/api', new Hono()
     });
     
   })
+
+  .post('/register', async (c) => {
+    const { token } = await c.req.json();
+    
+  })
   
   // Submit a guess
   .post('/guess', async (c) => {

@@ -35,6 +35,48 @@ interface Location {
   
   // Initialize the map and Street View
   function initialize() {
+    // Create API key input form
+    const apiLogin = document.createElement("div");
+    apiLogin.className = "api-login";
+    apiLogin.innerHTML = `
+      <div class="api-explanation">
+        <h2>Google Maps API Key Required</h2>
+        <p>This game uses Google Maps and Street View services. To use these features, you need to provide your own Google Maps API key. You can get one for free from the Google Cloud Console.</p>
+        <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" class="api-link">Get your API key here →</a>
+      </div>
+      <form id="api-form">
+        <label for="key_input">Enter your Google Maps API key:</label>
+        <input type="text" id="key_input" name="api-key" required>
+        <button type="submit">Submit</button>
+      </form>
+    `;
+    document.body.appendChild(apiLogin);
+
+    const form = document.getElementById("api-form") as HTMLFormElement;
+    const keyInput = document.getElementById("key_input") as HTMLInputElement;
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const key = keyInput.value.trim();
+      if (key) {
+        // Store the API key
+        window.googleMapsApiKey = key;
+        
+        // Remove the form
+        apiLogin.remove();
+        
+        // Load Google Maps API with the user's key
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&callback=initializeMap`;
+        script.async = true;
+        script.defer = true;
+        document.body.appendChild(script);
+      }
+    });
+  }
+  
+  // Function to initialize the map after API is loaded
+  function initializeMap() {
     // Set up the game UI
     setupGameUI();
     
@@ -57,7 +99,18 @@ interface Location {
         pov: { heading: 0, pitch: 0 },
         zoom: 1,
         addressControl: false,
-        showRoadLabels: false
+        showRoadLabels: false,
+        panControl: true,
+        zoomControl: false,
+        fullscreenControl: false,
+        motionTracking: false,
+        motionTrackingControl: false,
+        linksControl: true,
+        enableCloseButton: false,
+        visible: true,
+        panControlOptions: {
+          position: google.maps.ControlPosition.LEFT_BOTTOM
+        }
       }
     );
     
@@ -68,25 +121,14 @@ interface Location {
       }
     });
     
+    
     // Start the game
     startNewRound();
   }
   
   // Set up the game UI elements
   function setupGameUI() {
-    // Add game controls to the page
-    const controlsDiv = document.createElement("div");
-    controlsDiv.className = "game-controls";
-    controlsDiv.innerHTML = `
-      <div class="game-info">
-        <div id="score">Score: 0</div>
-        <div id="round">Round: 1/${maxRounds}</div>
-      </div>
-      <button id="guess-btn" disabled>Make Guess</button>
-      <button id="next-btn" disabled>Next Round</button>
-    `;
-    document.getElementsByClassName("controls-container")[0].appendChild(controlsDiv);    
-    // Add event listeners
+    // Add event listeners to the existing buttons
     document.getElementById("guess-btn")?.addEventListener("click", makeGuess);
     document.getElementById("next-btn")?.addEventListener("click", startNewRound);
   }
@@ -344,28 +386,44 @@ async function fetchRandomLocation() {
   // Update the score display
   function updateScoreDisplay(roundScore: number, distance: number) {
     const scoreElement = document.getElementById("score");
+    const distanceElement = document.getElementById("distance");
+    
     if (scoreElement) {
-      scoreElement.textContent = `Score: ${gameScore} (+${roundScore}) - Distance: ${Math.round(distance)} km`;
+      scoreElement.innerHTML = `${gameScore} <span class="score-change">(+${roundScore})</span>`;
+    }
+    
+    if (distanceElement) {
+      distanceElement.innerHTML = `<span class="distance-value">${Math.round(distance).toLocaleString()}</span> km`;
     }
   }
   
   // Update the round display
   function updateRoundDisplay() {
     const roundElement = document.getElementById("round");
+    const distanceElement = document.getElementById("distance");
+    
     if (roundElement) {
-      roundElement.textContent = `Round: ${currentRound}/${maxRounds}`;
+      roundElement.textContent = `${currentRound}/${maxRounds}`;
+    }
+
+    // Clear the distance when starting a new round
+    if (distanceElement) {
+      distanceElement.textContent = "-";
     }
   }
   
-  // Define the window interface to expose the initialize function
+  // Define the window interface to expose the initialize functions
   declare global {
     interface Window {
       initialize: () => void;
+      initializeMap: () => void;
+      googleMapsApiKey: string;
     }
   }
   
   // Export the initialize function to the global scope
   window.initialize = initialize;
+  window.initializeMap = initializeMap;
   
   // For module system
   export {};

@@ -56,11 +56,18 @@
       position: relative;
     }
 
-    #map {
+    .map-container {
       width: 30%;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 15px;
+    }
+
+    #map {
+      width: 100%;
       height: 50%;
       border-radius: 8px;
-      margin: 15px;
       overflow: hidden;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -87,7 +94,7 @@
     .controls-container {
       position: fixed;
       right: 20px;
-      top: 50%;
+      top: 75%;
       transform: translateY(-50%);
       z-index: 1000;
     }
@@ -142,23 +149,102 @@
       right: 60px;
     }
 
+    .game-info-container {
+      background-color: rgba(26, 34, 53, 0.95);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
     .game-info {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      color: #ffffff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(59, 130, 246, 0.2);
+      border-radius: 6px;
+      color: #3b82f6;
+    }
+
+    .info-content {
+      flex: 1;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .info-value {
+      font-size: 16px;
       font-weight: 500;
-      margin-bottom: 15px;
+      color: #ffffff;
     }
 
-    .game-controls button {
-      margin-bottom: 10px;
+    .score-change {
+      font-size: 14px;
+      color: #10b981;
+      font-weight: 500;
+    }
+
+    .distance-value {
+      color: #f59e0b;
+    }
+
+    .game-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .game-buttons button {
       width: 100%;
+      padding: 8px;
+      font-size: 16px;
+      background: linear-gradient(to bottom, #3b82f6, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
     }
 
-    .game-controls button:last-child {
-      margin-bottom: 0;
+    .game-buttons button:hover {
+      background: linear-gradient(to bottom, #4f8df9, #3b82f6);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .game-buttons button:disabled {
+      background: linear-gradient(to bottom, #64748b, #475569);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     /* SVG Globe Styles */
@@ -181,14 +267,6 @@
 
     svg path{
       stroke: cornflowerblue;
-    }
-
-    .game-info {
-      display: flex;
-      gap: 20px;
-      color: #ffffff;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-      font-weight: 500;
     }
 
     button {
@@ -267,7 +345,118 @@
       margin-bottom: 8px;
     }
 
-    /* Add responsive styles */
+    .api-login {
+      visibility: visible;
+      width: 400px;
+      background-color: rgba(26, 34, 53, 0.95);
+      color: #fff;
+      text-align: center;
+      border-radius: 12px;
+      padding: 20px;
+      position: fixed;
+      z-index: 9999;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4),
+      inset 0 2px 10px rgba(255, 255, 255, 0.308);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .api-explanation {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .api-explanation h2 {
+      margin: 0 0 15px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .api-explanation p {
+      margin: 0 0 15px 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .api-link {
+      display: inline-block;
+      color: #3b82f6;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .api-link:hover {
+      color: #4f8df9;
+      text-decoration: underline;
+    }
+
+    /* Add an overlay to dim the background */
+    .api-login::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: -1;
+      border-radius: 12px;
+    }
+
+    .api-login form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      border-radius: 12px;
+    }
+
+    .api-login label {
+      font-size: 16px;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    .api-login input {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      font-size: 14px;
+    }
+
+    .api-login input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .api-login button {
+      padding: 10px 20px;
+      background: linear-gradient(to bottom, #3b82f6, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .api-login button:hover {
+      background: linear-gradient(to bottom, #4f8df9, #3b82f6);
+      transform: translateY(-2px);
+    }
+
+    /* Update responsive styles */
     @media (max-width: 768px) {
       .content {
         flex-direction: column;
@@ -278,19 +467,64 @@
         height: 60%;
       }
       
-      #map {
+      .map-container {
         width: auto;
         height: 40%;
       }
       
-      .game-controls {
-        padding: 10px;
+      #map {
+        height: 50%;
       }
       
-      button {
-        padding: 8px 15px;
+      .game-info-container {
+        padding: 15px;
+      }
+      
+      .game-info {
+        font-size: 16px;
+      }
+      
+      .game-buttons button {
+        padding: 10px;
         font-size: 14px;
       }
+    }
+
+    /* Style the Map/Satellite buttons */
+    .gm-style-mtc button {
+        padding: 4px 8px !important;
+        height: 24px !important;
+        font-size: 12px !important;
+        min-width: 50px !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Adjust the container of Map/Satellite buttons */
+    .gm-style-mtc {
+        transform: scale(0.85);
+        transform-origin: right bottom;
+    }
+
+    /* Style the compass control */
+    .gm-compass {
+        transform: none !important;
+    }
+
+    .gm-compass-needle {
+        transform-origin: 50% 50% !important;
+    }
+
+    .gm-compass-turn {
+        display: block !important;
+    }
+
+    .gm-compass-tooltip-text {
+        display: block !important;
+    }
+
+    /* Remove any scaling from the compass container */
+    .gm-control-active.gm-compass {
+        transform: none !important;
     }
   </style>
 </head>
@@ -301,20 +535,55 @@
     </div>
     <div class="content">
       <div id="street-view"></div>
-      <div id="map"></div>
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="game-info-container">
+          <div class="game-info">
+            <div class="info-row">
+              <div class="info-icon">🎯</div>
+              <div class="info-content">
+                <div class="info-label">Total Score</div>
+                <div class="info-value" id="score">Score: 0</div>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-icon">🌍</div>
+              <div class="info-content">
+                <div class="info-label">Round</div>
+                <div class="info-value" id="round">Round: 1/5</div>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-icon">📏</div>
+              <div class="info-content">
+                <div class="info-label">Distance</div>
+                <div class="info-value" id="distance">-</div>
+              </div>
+            </div>
+          </div>
+          <div class="game-buttons">
+            <button id="guess-btn" disabled>Make Guess</button>
+            <button id="next-btn" disabled>Next Round</button>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- Game controls will be added by JavaScript -->
     <div class="controls-container">
       <div class="controls-trigger">
           <object type="image/svg+xml" data="/public/point.svg" class="point-svg"></object>
       </div>
-        
-      </div>
+      
     </div>
+  </div>
   
-  <!-- Load Google Maps JavaScript API -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initialize"></script>
+  <!-- Load application JavaScript -->
   <script src="/public/index.js"></script>
-  <object type="image/svg+xml" data="/public/globe.svg" class="globe-svg"></object>
+  <script>
+    // Call initialize when the page loads
+    window.addEventListener('load', () => {
+      window.initialize();
+    });
+  </script>
 </body>
 </html>
